@@ -1,16 +1,64 @@
 {
+  "name": "PacketCollect",
+  "column": 2,
   "propsSchema": {
     "type": "object",
     "properties": {
-      "string": {
-        "title": "字符串",
-        "type": "string"
-      },
-      "select": {
-        "title": "单选",
-        "type": "string",
-        "enum": ["a", "b", "c"]
+      "imageList": {
+        "title": "飞猪图片列表",
+        "description": "保证效果尽量填写5个不同的(120*100)",
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 5,
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "title": "图片名称",
+              "description": "描述",
+              "type": "string"
+            },
+            "img": {
+              "title": "图片",
+              "type": "string",
+              "format": "image"
+            }
+          }
+        },
+        "default": [
+          {
+            "title": "图片1",
+            "img": "//gw.alicdn.com/tfs/TB1eCbwb3MPMeJjy1XcXXXpppXa-241-206.png_250x250q75.jpg"
+          },
+          {
+            "title": "图片2",
+            "img": "//gw.alicdn.com/tfs/TB1rDTjb3MPMeJjy1XdXXasrXXa-241-206.png_250x250q75.jpg"
+          },
+          {
+            "title": "图片3",
+            "img": "//gw.alicdn.com/tfs/TB1rDTjb3MPMeJjy1XdXXasrXXa-241-206.png_250x250q75.jpg"
+          },
+          {
+            "title": "图片4",
+            "img": "//gw.alicdn.com/tfs/TB1rDTjb3MPMeJjy1XdXXasrXXa-241-206.png_250x250q75.jpg"
+          }
+        ]
       }
     }
+  },
+  "uiSchema": {},
+  "formData": {
+    "asacCode": "adsfasdfasdfasdf",
+    "directReturn": false,
+    "welcomeImg": "https://img.alicdn.com/tfs/TB1IP7MgbvpK1RjSZFqXXcXUVXa-731-1001.png",
+    "welcomeWidth": 730,
+    "bgColor": "#850B0B",
+    "bgImg": "https://gw.alicdn.com/tfs/TB1Et0Me7voK1RjSZFNXXcxMVXa-750-1334.jpg",
+    "countDownTime": 33,
+    "targetNum": 5,
+    "sumTime": 1600,
+    "imageList": [],
+    "picWidth": 120,
+    "picHeight": 100
   }
 }

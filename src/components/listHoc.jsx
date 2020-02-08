@@ -5,180 +5,202 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
-import {
-  SortableContainer,
-  SortableHandle,
-  SortableElement,
-  arrayMove,
-} from 'react-sortable-hoc';
-import FoldIcon from './foldIcon';
-import DescriptionList, { getDescription } from './descriptionList1';
+import { Table, Form, Input, InputNumber, Divider, Tooltip, Icon } from 'antd';
 
-const DragHandle = SortableHandle(() => (
-  <span className="fr-move-icon">:::</span>
-));
+const EditableContext = React.createContext();
 
-const listItemHoc = ButtonComponent =>
-  class extends React.Component {
-    componentDidMount() {
-      const { p = {}, name, fold } = this.props;
-      const description = getDescription({
-        schema: p.schema,
-        value: p.value,
-        index: name,
-      });
-      // 如果第一个值不为空，则收起
-      // 新增的值为0，不折叠
-      const hasValue = description && description[0] && description[0].text;
-      if (hasValue && fold !== 0) {
-        this.props.toggleFoldItem(name);
-      }
+class EditableCell extends React.Component {
+  getInput = () => {
+    if (this.props.inputType === 'number') {
+      return <InputNumber />;
     }
-
-    toggleFold = () => {
-      this.props.toggleFoldItem(this.props.name);
-    };
-
-    render() {
-      const { item, p = {}, name, fold } = this.props;
-      const descProps = { ...p, index: name };
-      const { options = {}, readonly } = p;
-      const { foldable: canFold, hideDelete } = options;
-      // 只有当items为object时才做收起（fold）处理
-      const isObj = p.schema.items && p.schema.items.type == 'object';
-      let setClass =
-        'fr-set ba b--black-10 hover-b--black-20 relative flex flex-column';
-      if (canFold && fold) {
-        setClass += ' pv12';
-      } else if (p.displayType === 'row') {
-        setClass += ' pt44';
-      }
-      return (
-        <li className={setClass}>
-          {canFold && fold && isObj ? <DescriptionList {...descProps} /> : item}
-          {canFold && (
-            <FoldIcon
-              fold={fold}
-              onClick={this.toggleFold}
-              style={{ position: 'absolute', top: 14, right: 36 }}
-            />
-          )}
-          {!readonly && <DragHandle />}
-          {!((canFold && fold) || hideDelete || readonly) && (
-            <ButtonComponent
-              className="self-end"
-              type="dashed"
-              icon="delete"
-              onClick={() => {
-                const value = [...p.value];
-                value.splice(name, 1);
-                p.onChange(p.name, value);
-              }}
-            >
-              删除
-            </ButtonComponent>
-          )}
-        </li>
-      );
-    }
+    return <Input />;
   };
 
-const fieldListHoc = ButtonComponent => {
-  const SortableItem = SortableElement(listItemHoc(ButtonComponent));
-  return class extends React.Component {
-    handleAddClick = () => {
-      const { p, addUnfoldItem } = this.props;
-      const value = [...p.value];
-      value.push(p.newItem);
-      p.onChange(p.name, value);
-      addUnfoldItem();
-    };
-    // buttons is a list, each item looks like:
-    // {
-    //   "text": "删除全部",
-    //   "icon": "delete",
-    //   "callback": "clearAll"
-    // }
-
-    render() {
-      const { p, foldList = [], toggleFoldItem } = this.props;
-      const { options, extraButtons } = p || {};
-      // prefer ui:options/buttons to ui:extraButtons, but keep both for backwards compatibility
-      const buttons = options.buttons || extraButtons || [];
-      const { readonly, schema = {} } = p;
-      const { maxItems } = schema;
-      const list = p.value || [];
-      const canAdd = maxItems ? maxItems > list.length : true; // 当到达最大个数，新增按钮消失
-      return (
-        <ul className="pl0 ma0">
-          {list.map((_, name) => (
-            <SortableItem
-              key={`item-${name}`}
-              index={name}
-              name={name}
-              p={p}
-              fold={foldList[name]}
-              toggleFoldItem={toggleFoldItem}
-              item={p.getSubField({
-                name,
-                value: p.value[name],
-                onChange(key, val) {
-                  const value = [...p.value];
-                  value[key] = val;
-                  p.onChange(p.name, value);
+  renderCell = ({ getFieldDecorator }) => {
+    const {
+      editing,
+      dataIndex,
+      title,
+      inputType,
+      record,
+      index,
+      children,
+      ...restProps
+    } = this.props;
+    return (
+      <td {...restProps}>
+        {editing ? (
+          <Form.Item style={{ margin: 0 }}>
+            {getFieldDecorator(dataIndex, {
+              rules: [
+                {
+                  required: true,
+                  message: `请输入 ${title}!`,
                 },
-              })}
-            />
-          ))}
-          {!readonly && (
-            <div className="tr">
-              {canAdd && (
-                <ButtonComponent icon="file-add" onClick={this.handleAddClick}>
-                  新增
-                </ButtonComponent>
-              )}
-              {buttons &&
-                buttons.length > 0 &&
-                buttons.map((item, i) => (
-                  <ButtonComponent
-                    className="ml2"
-                    icon={item.icon}
-                    key={i.toString()}
-                    onClick={() => {
-                      if (item.callback === 'clearAll') {
-                        p.onChange(p.name, []);
-                        return;
-                      }
-                      if (item.callback === 'copyLast') {
-                        const value = [...p.value];
-                        const lastIndex = value.length - 1;
-                        value.push(
-                          lastIndex > -1 ? value[lastIndex] : p.newItem
-                        );
-                        p.onChange(p.name, value);
-                        return;
-                      }
-                      if (typeof window[item.callback] === 'function') {
-                        const value = [...p.value];
-                        const onChange = value => p.onChange(p.name, value);
-                        window[item.callback](value, onChange, p.newItem); // eslint-disable-line
-                      }
-                    }}
-                  >
-                    {item.text}
-                  </ButtonComponent>
-                ))}
-            </div>
-          )}
-        </ul>
-      );
-    }
+              ],
+              initialValue: record[dataIndex],
+            })(this.getInput())}
+          </Form.Item>
+        ) : (
+          children
+        )}
+      </td>
+    );
   };
-};
 
-export default function listHoc(ButtonComponent) {
-  const SortableList = SortableContainer(fieldListHoc(ButtonComponent));
-  return class extends React.Component {
+  render() {
+    return (
+      <EditableContext.Consumer>{this.renderCell}</EditableContext.Consumer>
+    );
+  }
+}
+
+class EditableTable extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { data: props.dataSource.slice(), editingKey: '' };
+
+    this.columns = props.columns.slice();
+    this.columns.map(item => (item.editable = true));
+    this.columns.push({
+      title: '操作',
+      key: 'action',
+      width: 180,
+      align: 'center',
+      render: (text, record) => {
+        const { editingKey } = this.state;
+        const editable = this.isEditing(record);
+
+        return (
+          <span>
+            {editable && (
+              <EditableContext.Consumer>
+                {form => (
+                  <Icon
+                    type="check"
+                    style={{ color: '#26D60C' }}
+                    onClick={() => this.save(form, record.key)}
+                  />
+                )}
+              </EditableContext.Consumer>
+            )}
+            {!editable && editingKey && (
+              <Icon type="lock" style={{ color: '#999' }} />
+            )}
+
+            {!editable && !editingKey && (
+              <Icon
+                type="edit"
+                theme="twoTone"
+                twoToneColor="#52c41a"
+                onClick={editingKey ? null : () => this.edit(record.key)}
+              />
+            )}
+            <Divider type="vertical" />
+            <Icon
+              type="arrow-up"
+              onClick={() => {
+                console.log('up');
+              }}
+            />
+            <Divider type="vertical" />
+            <Icon
+              type="arrow-down"
+              onClick={() => {
+                console.log('down');
+              }}
+            />
+
+            <Divider type="vertical" />
+            <Icon
+              type="plus"
+              onClick={() => {
+                console.log('plus');
+              }}
+            />
+            <Divider type="vertical" />
+            <Icon
+              type="delete"
+              theme="twoTone"
+              twoToneColor="#eb2f96"
+              onClick={() => {
+                console.log('delete');
+              }}
+            />
+          </span>
+        );
+      },
+    });
+  }
+
+  isEditing = record => record.key === this.state.editingKey;
+
+  save(form, key) {
+    form.validateFields((error, row) => {
+      if (error) {
+        return;
+      }
+      const newData = [...this.state.data];
+      const index = newData.findIndex(item => key === item.key);
+      if (index > -1) {
+        const item = newData[index];
+        newData.splice(index, 1, {
+          ...item,
+          ...row,
+        });
+        this.setState({ data: newData, editingKey: '' });
+      } else {
+        newData.push(row);
+        this.setState({ data: newData, editingKey: '' });
+      }
+    });
+  }
+
+  edit(key) {
+    this.setState({ editingKey: key });
+  }
+
+  render() {
+    const components = {
+      body: {
+        cell: EditableCell,
+      },
+    };
+
+    const columns = this.columns.map(col => {
+      if (!col.editable) {
+        return col;
+      }
+      return {
+        ...col,
+        onCell: record => ({
+          record,
+          inputType: col.dataIndex === 'age' ? 'number' : 'text',
+          dataIndex: col.dataIndex,
+          title: col.title,
+          editing: this.isEditing(record),
+        }),
+      };
+    });
+
+    return (
+      <EditableContext.Provider value={this.props.form}>
+        <Table
+          components={components}
+          bordered
+          dataSource={this.state.data}
+          columns={columns}
+          rowClassName="editable-row"
+          pagination={false}
+        />
+      </EditableContext.Provider>
+    );
+  }
+}
+
+export default function listHoc() {
+  return class extends React.PureComponent {
     static propTypes = {
       value: PropTypes.array,
     };
@@ -189,51 +211,41 @@ export default function listHoc(ButtonComponent) {
 
     constructor(props) {
       super(props);
-      const len = this.props.value.length || 0;
-      this.state = {
-        foldList: new Array(len).fill(false) || [],
-      };
     }
 
-    // 新添加的item默认是展开的
-    addUnfoldItem = () =>
-      this.setState({
-        foldList: [...this.state.foldList, 0],
-      });
-
-    toggleFoldItem = index => {
-      const { foldList = [] } = this.state;
-      foldList[index] = !foldList[index]; // TODO: need better solution for the weird behavior caused by setState being async
-      this.setState({
-        foldList,
-      });
-    };
-
-    handleSort = ({ oldIndex, newIndex }) => {
-      const { onChange, name, value } = this.props;
-      onChange(name, arrayMove(value, oldIndex, newIndex));
-      this.setState({
-        foldList: arrayMove(this.state.foldList, oldIndex, newIndex),
-      });
-    };
-
     render() {
-      const { foldList } = this.state;
-      return (
-        <SortableList
-          p={this.props}
-          foldList={foldList}
-          toggleFoldItem={this.toggleFoldItem}
-          addUnfoldItem={this.addUnfoldItem}
-          distance={6}
-          useDragHandle
-          helperClass="fr-sort-help-class"
-          shouldCancelStart={e =>
-            e.toElement && e.toElement.className === 'fr-tooltip-container'
-          }
-          onSortEnd={this.handleSort}
-        />
-      );
+      const { name, schema, formData } = this.props;
+      // generate columns
+      const columns = [];
+      const subProperties = schema.items.properties;
+      for (let key in subProperties) {
+        const obj = Object.create(null);
+        obj.title = subProperties[key].title;
+        if (
+          subProperties[key].format &&
+          subProperties[key].format === 'image'
+        ) {
+          obj.render = src => (
+            <Tooltip
+              placement="topLeft"
+              title={() => <img src={src} width={100} />}
+            >
+              {src}
+            </Tooltip>
+          );
+          obj.ellipsis = true;
+        }
+        obj.dataIndex = key;
+        columns.push(obj);
+      }
+
+      // generate source
+      const tableData = formData[name];
+      tableData.map((item, index) => (item.key = `${index + 1}`));
+
+      const EditableFormTable = Form.create()(EditableTable);
+
+      return <EditableFormTable columns={columns} dataSource={tableData} />;
     }
   };
 }
