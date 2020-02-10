@@ -71,7 +71,9 @@ class EditableTable extends React.Component {
       render: (text, record) => {
         const { editingKey } = this.state;
         const editable = this.isEditing(record);
-
+        const disableColor = '#aaa';
+        const isFirst = record.key * 1 === 1;
+        const isLast = record.key * 1 === props.dataSource.length;
         return (
           <span>
             {editable && (
@@ -86,7 +88,7 @@ class EditableTable extends React.Component {
               </EditableContext.Consumer>
             )}
             {!editable && editingKey && (
-              <Icon type="lock" style={{ color: '#999' }} />
+              <Icon type="lock" style={{ color: disableColor }} />
             )}
 
             {!editable && !editingKey && (
@@ -100,16 +102,16 @@ class EditableTable extends React.Component {
             <Divider type="vertical" />
             <Icon
               type="arrow-up"
-              onClick={() => {
-                console.log('up');
+              style={{
+                color: isFirst ? disableColor : '',
               }}
+              onClick={() => !isFirst && this.move(record.key * 1, 'up')}
             />
             <Divider type="vertical" />
             <Icon
               type="arrow-down"
-              onClick={() => {
-                console.log('down');
-              }}
+              style={{ color: isLast ? disableColor : '' }}
+              onClick={() => !isLast && this.move(record.key * 1, 'down')}
             />
 
             <Divider type="vertical" />
@@ -125,7 +127,7 @@ class EditableTable extends React.Component {
               theme="twoTone"
               twoToneColor="#eb2f96"
               onClick={() => {
-                console.log('delete');
+                props.delete(record.key * 1 - 1);
               }}
             />
           </span>
@@ -136,13 +138,39 @@ class EditableTable extends React.Component {
 
   isEditing = record => record.key === this.state.editingKey;
 
-  save(form, key) {
+  move = (index, direction = 'up') => {
+    const newData = [...this.state.data];
+    const tmp = newData[index - 1];
+
+    if (direction === 'up') {
+      newData[index - 1] = newData[index - 2];
+      newData[index - 2] = tmp;
+      newData[index - 1].key = `${index}`;
+      newData[index - 2].key = `${index - 1}`;
+    } else {
+      newData[index - 1] = newData[index];
+      newData[index] = tmp;
+      newData[index - 1].key = `${index}`;
+      newData[index].key = `${index - 1}`;
+    }
+
+    this.setState({ data: newData });
+    newData.map(item => {
+      delete item.key;
+      return item;
+    });
+    this.props.update(newData);
+  };
+
+  save = (form, key) => {
+    const { update } = this.props;
     form.validateFields((error, row) => {
       if (error) {
         return;
       }
       const newData = [...this.state.data];
       const index = newData.findIndex(item => key === item.key);
+
       if (index > -1) {
         const item = newData[index];
         newData.splice(index, 1, {
@@ -154,8 +182,14 @@ class EditableTable extends React.Component {
         newData.push(row);
         this.setState({ data: newData, editingKey: '' });
       }
+      newData.map(item => {
+        delete item.key;
+        return item;
+      });
+
+      update(newData);
     });
-  }
+  };
 
   edit(key) {
     this.setState({ editingKey: key });
@@ -211,11 +245,24 @@ export default function listHoc() {
 
     constructor(props) {
       super(props);
+      this.state = {
+        tableData: [],
+        columns: [],
+      };
+      this.update = this.update.bind(this);
+      this.delete = this.delete.bind(this);
     }
 
-    render() {
-      const { name, schema, formData } = this.props;
-      // generate columns
+    getSourceData = () => {
+      const { name, formData } = this.props;
+      const tableData = formData[name].slice();
+      tableData.map((item, index) => (item.key = `${index + 1}`));
+
+      return tableData;
+    };
+
+    getColums = () => {
+      const { schema } = this.props;
       const columns = [];
       const subProperties = schema.items.properties;
       for (let key in subProperties) {
@@ -238,14 +285,33 @@ export default function listHoc() {
         obj.dataIndex = key;
         columns.push(obj);
       }
+      return columns;
+    };
 
-      // generate source
-      const tableData = formData[name];
-      tableData.map((item, index) => (item.key = `${index + 1}`));
+    update = value => {
+      const { name, onChange } = this.props;
+      onChange(name, value);
+    };
 
+    delete = index => {
+      const { name, value, onChange } = this.props;
+      const _value = [...value];
+      _value.splice(index, 1);
+      onChange(name, _value);
+    };
+
+    render() {
       const EditableFormTable = Form.create()(EditableTable);
-
-      return <EditableFormTable columns={columns} dataSource={tableData} />;
+      return (
+        <EditableFormTable
+          columns={this.getColums()}
+          dataSource={this.getSourceData()}
+          up={this.up}
+          down={this.down}
+          update={this.update}
+          delete={this.delete}
+        />
+      );
     }
   };
 }

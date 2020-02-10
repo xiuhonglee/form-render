@@ -93,12 +93,6 @@ const fieldListHoc = ButtonComponent => {
       p.onChange(p.name, value);
       addUnfoldItem();
     };
-    // buttons is a list, each item looks like:
-    // {
-    //   "text": "删除全部",
-    //   "icon": "delete",
-    //   "callback": "clearAll"
-    // }
 
     render() {
       const { p, foldList = [], toggleFoldItem } = this.props;

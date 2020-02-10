@@ -66,7 +66,9 @@ class Demo extends React.Component {
   };
 
   handleValidate = valid => {
-    console.log('没有通过的校验:', valid);
+    if (valid && valid.length > 0) {
+      console.log('没有通过的校验:', valid);
+    }
   };
 
   render() {
