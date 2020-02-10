@@ -115,12 +115,7 @@ class EditableTable extends React.Component {
             />
 
             <Divider type="vertical" />
-            <Icon
-              type="plus"
-              onClick={() => {
-                console.log('plus');
-              }}
-            />
+            <Icon type="plus" onClick={() => this.addRow(record.key * 1)} />
             <Divider type="vertical" />
             <Icon
               type="delete"
@@ -155,11 +150,26 @@ class EditableTable extends React.Component {
     }
 
     this.setState({ data: newData });
-    newData.map(item => {
-      delete item.key;
+    this.props.update(newData);
+  };
+
+  addRow = index => {
+    const oldData = [...this.state.data];
+    const newRow = Object.assign({}, oldData[index - 1]);
+    const newData = [
+      ...oldData.slice(0, index),
+      newRow,
+      ...oldData.slice(index),
+    ];
+    newData.map((item, i) => {
+      if (item.key) delete item.key;
+      item.key = `${i + 1}`;
       return item;
     });
-    this.props.update(newData);
+    this.setState({ data: newData }, () => {
+      this.edit(`${index + 1}`);
+    });
+    // update(newData);
   };
 
   save = (form, key) => {
@@ -182,10 +192,6 @@ class EditableTable extends React.Component {
         newData.push(row);
         this.setState({ data: newData, editingKey: '' });
       }
-      newData.map(item => {
-        delete item.key;
-        return item;
-      });
 
       update(newData);
     });
@@ -290,6 +296,10 @@ export default function listHoc() {
 
     update = value => {
       const { name, onChange } = this.props;
+      value.map(item => {
+        if (item.key) delete item.key;
+        return item;
+      });
       onChange(name, value);
     };
 
